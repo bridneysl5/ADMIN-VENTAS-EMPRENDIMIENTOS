@@ -9,6 +9,7 @@ export default function POS() {
   const [insumos, setInsumos] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroEmprendimiento, setFiltroEmprendimiento] = useState("Todos");
 
   // Pedido info
   const [telefono, setTelefono] = useState("");
@@ -119,19 +120,31 @@ export default function POS() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", height: "100%" }}>
       <div className="glass" style={{ padding: "20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
           <h2 style={{ margin: 0 }}>Catálogo para Vender</h2>
-          <input 
-            type="text" 
-            placeholder="🔍 Buscar producto..." 
-            value={searchTerm} 
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{ width: "250px", padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.1)", color: "white" }}
-          />
+          <div style={{ display: "flex", gap: "10px" }}>
+            <select
+              value={filtroEmprendimiento}
+              onChange={e => setFiltroEmprendimiento(e.target.value)}
+              style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", color: "white", outline: "none" }}
+            >
+              <option value="Todos">Todos (Emprendimientos)</option>
+              <option value="Regalos">Regalos</option>
+              <option value="Tortas">Tortas</option>
+            </select>
+            <input 
+              type="text" 
+              placeholder="🔍 Buscar producto..." 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ width: "250px", padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.1)", color: "white" }}
+            />
+          </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "15px" }}>
           {productos
             .filter(p => p.nombre.toLowerCase().includes(searchTerm.toLowerCase()))
+            .filter(p => filtroEmprendimiento === "Todos" || p.emprendimiento === filtroEmprendimiento)
             .map(p => (
             <div key={p.id} onClick={() => addToCart(p)} style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--glass-border)", padding: "15px", borderRadius: "8px", cursor: "pointer", textAlign: "center" }}>
               {p.imageUrl && <img src={p.imageUrl} alt={p.nombre} style={{ width: "100%", height: "120px", objectFit: "cover", borderRadius: "8px", marginBottom: "10px" }} />}
