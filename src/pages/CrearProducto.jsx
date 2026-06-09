@@ -18,8 +18,13 @@ export default function CrearProducto() {
   const [ocasionesSeleccionadas, setOcasionesSeleccionadas] = useState([]);
   const [detallesList, setDetallesList] = useState([""]);
   
-  const CATEGORIAS_OPCIONES = ["Arreglos de Flores", "Sets y Gift Boxes", "Tortas y Repostería", "Cuadros", "Desayunos", "Otros"];
-  const OCASIONES_OPCIONES = ["Para Ella", "Para El", "Aniversarios y Parejas", "Graduación", "Día del Padre", "Día de la Madre", "Cumpleaños", "Nacimientos", "San Valentín"];
+  const categoriasAMostrar = emprendimiento === "Tortas" 
+    ? ["Pasteles / Tortas", "Cupcakes", "Bocaditos"] 
+    : ["Arreglos de Flores", "Sets y Gift Boxes", "Tortas y Repostería", "Cuadros", "Desayunos", "Otros"];
+  
+  const ocasionesAMostrar = emprendimiento === "Tortas"
+    ? ["Cumpleaños", "Aniversarios", "Infantiles", "K-pop", "Aesthetics", "San Valentín", "Día de la Madre"]
+    : ["Para Ella", "Para El", "Aniversarios y Parejas", "Graduación", "Día del Padre", "Día de la Madre", "Cumpleaños", "Nacimientos", "San Valentín"];
   
   const [selectedInsumo, setSelectedInsumo] = useState("");
   const [cantInsumo, setCantInsumo] = useState("");
@@ -123,7 +128,7 @@ export default function CrearProducto() {
                 <div className="card" style={{ background: "rgba(0,0,0,0.2)", padding: "10px" }}>
                   <h4>Categorías</h4>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "10px" }}>
-                    {CATEGORIAS_OPCIONES.map(cat => (
+                    {categoriasAMostrar.map(cat => (
                       <label key={cat} style={{ 
                         cursor: "pointer", fontSize: "0.9em", display: "flex", alignItems: "center", justifyContent: "space-between",
                         background: "rgba(0,0,0,0.2)", padding: "10px 15px", borderRadius: "8px", border: "1px solid var(--glass-border)", transition: "all 0.2s"
@@ -145,7 +150,7 @@ export default function CrearProducto() {
                 <div className="card" style={{ background: "rgba(0,0,0,0.2)", padding: "10px" }}>
                   <h4>Ocasiones</h4>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "10px" }}>
-                    {OCASIONES_OPCIONES.map(oc => (
+                    {ocasionesAMostrar.map(oc => (
                       <label key={oc} style={{ 
                         cursor: "pointer", fontSize: "0.9em", display: "flex", alignItems: "center", justifyContent: "space-between",
                         background: "rgba(0,0,0,0.2)", padding: "10px 15px", borderRadius: "8px", border: "1px solid var(--glass-border)", transition: "all 0.2s"
