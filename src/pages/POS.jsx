@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { collection, onSnapshot, addDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import ModalTicket from "../components/ModalTicket";
-import { Trash2, Plus, Minus, LayoutGrid, List, ShoppingCart, X } from "lucide-react";
+import { Trash2, Plus, Minus, LayoutGrid, List, ShoppingCart, X, Filter } from "lucide-react";
 
 export default function POS() {
   const [productos, setProductos] = useState([]);
@@ -13,6 +13,7 @@ export default function POS() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
+  const [showFiltrosCategorias, setShowFiltrosCategorias] = useState(false);
 
   useEffect(() => {
     setCategoriaSeleccionada("Todas");
@@ -328,6 +329,28 @@ export default function POS() {
               </button>
             </div>
 
+            <button
+              onClick={() => setShowFiltrosCategorias(!showFiltrosCategorias)}
+              style={{
+                background: showFiltrosCategorias ? "var(--primary)" : "rgba(0,0,0,0.5)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "8px",
+                color: "white",
+                padding: "10px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px"
+              }}
+              title="Filtrar por Categoría"
+            >
+              <Filter size={18} />
+              {categoriaSeleccionada !== "Todas" && (
+                <span style={{ fontSize: "12px", background: "var(--danger)", padding: "2px 6px", borderRadius: "10px", fontWeight: "bold" }}>1</span>
+              )}
+            </button>
+
             <select
               value={filtroEmprendimiento}
               onChange={e => setFiltroEmprendimiento(e.target.value)}
@@ -347,40 +370,42 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Categorías Dinámicas */}
-        <div style={{ 
-          display: "flex", 
-          gap: "8px", 
-          overflowX: "auto", 
-          flexWrap: "nowrap",
-          paddingBottom: "12px", 
-          marginBottom: "20px",
-          borderBottom: "1px solid var(--glass-border)",
-          scrollbarWidth: "thin",
-          maxWidth: "100%"
-        }}>
-          {categoriasDisponibles.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategoriaSeleccionada(cat)}
-              style={{
-                background: categoriaSeleccionada === cat ? "var(--primary)" : "rgba(255,255,255,0.05)",
-                color: "white",
-                border: categoriaSeleccionada === cat ? "none" : "1px solid var(--glass-border)",
-                padding: "8px 16px",
-                borderRadius: "20px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-                fontSize: "0.85rem",
-                fontWeight: categoriaSeleccionada === cat ? "bold" : "normal",
-                transition: "all 0.2s"
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {/* Categorías Dinámicas (Ocultables) */}
+        {showFiltrosCategorias && (
+          <div style={{ 
+            display: "flex", 
+            gap: "8px", 
+            overflowX: "auto", 
+            flexWrap: "nowrap",
+            paddingBottom: "12px", 
+            marginBottom: "20px",
+            borderBottom: "1px solid var(--glass-border)",
+            scrollbarWidth: "thin",
+            maxWidth: "100%"
+          }}>
+            {categoriasDisponibles.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoriaSeleccionada(cat)}
+                style={{
+                  background: categoriaSeleccionada === cat ? "var(--primary)" : "rgba(255,255,255,0.05)",
+                  color: "white",
+                  border: categoriaSeleccionada === cat ? "none" : "1px solid var(--glass-border)",
+                  padding: "8px 16px",
+                  borderRadius: "20px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  fontSize: "0.85rem",
+                  fontWeight: categoriaSeleccionada === cat ? "bold" : "normal",
+                  transition: "all 0.2s"
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Listado de Productos */}
         <div style={{ flex: 1, overflowY: "auto", paddingRight: "5px" }}>
