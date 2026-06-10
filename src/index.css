@@ -180,8 +180,10 @@ input:focus, select:focus {
 }
 
 /* Ocultar botones mobile en desktop por defecto */
-.mobile-cart-fab, .mobile-cart-modal {
-  display: none !important;
+@media (min-width: 769px) {
+  .mobile-cart-fab, .mobile-cart-modal {
+    display: none !important;
+  }
 }
 
 /* Small Screens (Mobile & Tablet) */
@@ -282,7 +284,5 @@ input:focus, select:focus {
     width: 95%;
     max-width: 400px;
   }
+  }
 }
-
-}
-
