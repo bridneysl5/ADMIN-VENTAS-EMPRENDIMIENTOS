@@ -179,6 +179,11 @@ input:focus, select:focus {
   z-index: 1000;
 }
 
+/* Ocultar botones mobile en desktop por defecto */
+.mobile-cart-fab, .mobile-cart-modal {
+  display: none !important;
+}
+
 /* Small Screens (Mobile & Tablet) */
 @media (max-width: 768px) {
   .app-container {
@@ -279,8 +284,5 @@ input:focus, select:focus {
   }
 }
 
-/* Ocultar botones mobile en desktop por defecto */
-.mobile-cart-fab, .mobile-cart-modal {
-  display: none !important;
 }
 
