@@ -227,11 +227,8 @@ input:focus, select:focus {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Make inline React styled grids responsive on mobile */
-  div[style*="grid-template-columns"],
-  div[style*="gridTemplateColumns"],
-  form[style*="grid-template-columns"],
-  form[style*="gridTemplateColumns"] {
+  /* Layout responsive class para reemplazar el viejo selector genérico */
+  .responsive-grid {
     grid-template-columns: 1fr !important;
   }
 

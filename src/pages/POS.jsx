@@ -212,7 +212,7 @@ export default function POS() {
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", height: "100%" }}>
+    <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", height: "100%" }}>
       <div className="glass" style={{ padding: "20px", display: "flex", flexDirection: "column", height: "100%" }}>
         
         {/* Encabezado y Filtros */}
@@ -281,10 +281,12 @@ export default function POS() {
           display: "flex", 
           gap: "8px", 
           overflowX: "auto", 
+          flexWrap: "nowrap",
           paddingBottom: "12px", 
           marginBottom: "20px",
           borderBottom: "1px solid var(--glass-border)",
-          scrollbarWidth: "thin"
+          scrollbarWidth: "thin",
+          maxWidth: "100%"
         }}>
           {categoriasDisponibles.map(cat => (
             <button
@@ -298,6 +300,7 @@ export default function POS() {
                 borderRadius: "20px",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
+                flexShrink: 0,
                 fontSize: "0.85rem",
                 fontWeight: categoriaSeleccionada === cat ? "bold" : "normal",
                 transition: "all 0.2s"
