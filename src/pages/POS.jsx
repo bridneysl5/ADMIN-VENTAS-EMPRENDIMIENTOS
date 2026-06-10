@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { collection, onSnapshot, addDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import ModalTicket from "../components/ModalTicket";
-import { Trash2, Plus, Minus, LayoutGrid, List } from "lucide-react";
+import { Trash2, Plus, Minus, LayoutGrid, List, ShoppingCart, X } from "lucide-react";
 
 export default function POS() {
   const [productos, setProductos] = useState([]);
@@ -12,6 +12,7 @@ export default function POS() {
   const [filtroEmprendimiento, setFiltroEmprendimiento] = useState("Todos");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
+  const [isCartModalOpen, setIsCartModalOpen] = useState(false);
 
   useEffect(() => {
     setCategoriaSeleccionada("Todas");
@@ -209,7 +210,77 @@ export default function POS() {
     });
 
     setCarrito([]); setTelefono(""); setDireccion(""); setComentarios(""); setIncluyeDelivery(false); setCostoDelivery("");
+    setIsCartModalOpen(false); // Close modal after sale on mobile
   };
+
+  const renderCartPanel = () => (
+    <>
+      <h3 style={{ marginBottom: "10px" }}>Venta Actual</h3>
+      <div style={{ flex: 1, overflowY: "auto", margin: "10px 0", paddingRight: "5px" }}>
+        {carrito.length === 0 && <p style={{ color: "var(--text-muted)", textAlign: "center", marginTop: "20px" }}>El carrito está vacío</p>}
+        {carrito.map(c => (
+          <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.2)", padding: "10px", borderRadius: "8px", marginBottom: "10px" }}>
+            <div style={{ flex: 1 }}>
+              <strong style={{ display: "block", marginBottom: "5px" }}>{c.nombre}</strong>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <button onClick={() => updateQty(c.id, -1)} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", padding: "5px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Minus size={14} />
+                </button>
+                <span>{c.qty}</span>
+                <button onClick={() => updateQty(c.id, 1)} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", padding: "5px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Plus size={14} />
+                </button>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px" }}>
+              <strong>S/ {(c.qty * c.precioVenta).toFixed(2)}</strong>
+              <button onClick={() => removeFromCart(c.id)} style={{ background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "none", padding: "5px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {carrito.length > 0 && (
+          <div style={{ marginTop: "20px", background: "rgba(0,0,0,0.2)", padding: "15px", borderRadius: "8px" }}>
+            <h4 style={{ marginBottom: "10px" }}>Detalles del Pedido</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input placeholder="WhatsApp del Cliente (Ej: 999111222)" type="tel" value={telefono} onChange={e=>setTelefono(e.target.value)} />
+              <input placeholder="Dirección de envío" value={direccion} onChange={e=>setDireccion(e.target.value)} />
+              <textarea placeholder="Comentarios / Notas" value={comentarios} onChange={e=>setComentarios(e.target.value)} style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--glass-border)", padding: "10px", borderRadius: "8px", color: "white", outline: "none", width: "100%", resize: "none" }} rows="2"></textarea>
+              
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontSize: "0.9rem" }}>
+                <input type="checkbox" checked={incluyeDelivery} onChange={e=>setIncluyeDelivery(e.target.checked)} style={{ width: "auto", margin: 0 }} />
+                ¿Incluye Delivery?
+              </label>
+              
+              {incluyeDelivery && (
+                <input type="number" step="0.1" placeholder="Costo de Delivery (S/)" value={costoDelivery} onChange={e=>setCostoDelivery(e.target.value)} />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div style={{ borderTop: "1px solid var(--glass-border)", paddingTop: "15px", marginTop: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+          <span>Subtotal:</span>
+          <span>S/ {subtotal.toFixed(2)}</span>
+        </div>
+        {incluyeDelivery && (
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+            <span>Delivery:</span>
+            <span>S/ {deliveryMonto.toFixed(2)}</span>
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.3rem", fontWeight: "bold", margin: "10px 0" }}>
+          <span>Total a Cobrar:</span>
+          <span>S/ {total.toFixed(2)}</span>
+        </div>
+        <button onClick={processSale} className="btn-primary" style={{ width: "100%", padding: "15px", fontSize: "1.1rem" }}>Cobrar Venta</button>
+      </div>
+    </>
+  );
 
   return (
     <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", height: "100%" }}>
@@ -426,71 +497,32 @@ export default function POS() {
         </div>
       </div>
 
-      <div className="glass" style={{ padding: "20px", display: "flex", flexDirection: "column", position: "sticky", top: "20px", maxHeight: "calc(100vh - 40px)" }}>
-        <h3>Venta Actual</h3>
-        <div style={{ flex: 1, overflowY: "auto", margin: "20px 0", paddingRight: "5px" }}>
-          {carrito.map(c => (
-            <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.2)", padding: "10px", borderRadius: "8px", marginBottom: "10px" }}>
-              <div style={{ flex: 1 }}>
-                <strong style={{ display: "block", marginBottom: "5px" }}>{c.nombre}</strong>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <button onClick={() => updateQty(c.id, -1)} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", padding: "5px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Minus size={14} />
-                  </button>
-                  <span>{c.qty}</span>
-                  <button onClick={() => updateQty(c.id, 1)} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", padding: "5px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px" }}>
-                <strong>S/ {(c.qty * c.precioVenta).toFixed(2)}</strong>
-                <button onClick={() => removeFromCart(c.id)} style={{ background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "none", padding: "5px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {carrito.length > 0 && (
-            <div style={{ marginTop: "20px", background: "rgba(0,0,0,0.2)", padding: "15px", borderRadius: "8px" }}>
-              <h4 style={{ marginBottom: "10px" }}>Detalles del Pedido</h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <input placeholder="WhatsApp del Cliente (Ej: 999111222)" type="tel" value={telefono} onChange={e=>setTelefono(e.target.value)} />
-                <input placeholder="Dirección de envío" value={direccion} onChange={e=>setDireccion(e.target.value)} />
-                <textarea placeholder="Comentarios / Notas" value={comentarios} onChange={e=>setComentarios(e.target.value)} style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--glass-border)", padding: "10px", borderRadius: "8px", color: "white", outline: "none", width: "100%", resize: "none" }} rows="2"></textarea>
-                
-                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                  <input type="checkbox" checked={incluyeDelivery} onChange={e=>setIncluyeDelivery(e.target.checked)} style={{ width: "auto" }} />
-                  ¿Incluye Delivery?
-                </label>
-                
-                {incluyeDelivery && (
-                  <input type="number" step="0.1" placeholder="Costo de Delivery (S/)" value={costoDelivery} onChange={e=>setCostoDelivery(e.target.value)} />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <div style={{ borderTop: "1px solid var(--glass-border)", paddingTop: "15px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px", color: "var(--text-muted)" }}>
-            <span>Subtotal:</span>
-            <span>S/ {subtotal.toFixed(2)}</span>
-          </div>
-          {incluyeDelivery && (
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px", color: "var(--text-muted)" }}>
-              <span>Delivery:</span>
-              <span>S/ {deliveryMonto.toFixed(2)}</span>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.5rem", fontWeight: "bold", margin: "10px 0" }}>
-            <span>Total a Cobrar:</span>
-            <span>S/ {total.toFixed(2)}</span>
-          </div>
-          <button onClick={processSale} className="btn-primary" style={{ width: "100%", padding: "15px", fontSize: "1.1rem" }}>Cobrar Venta</button>
-        </div>
+      <div className="glass desktop-cart" style={{ padding: "20px", display: "flex", flexDirection: "column", position: "sticky", top: "20px", maxHeight: "calc(100vh - 40px)" }}>
+        {renderCartPanel()}
       </div>
+
+      {/* Floating Button for Mobile */}
+      <button 
+        className="mobile-cart-fab"
+        onClick={() => setIsCartModalOpen(true)}
+      >
+        <ShoppingCart size={24} />
+        {carrito.length > 0 && <span className="cart-badge">{carrito.reduce((a, b) => a + b.qty, 0)}</span>}
+      </button>
+
+      {/* Mobile Cart Modal */}
+      {isCartModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCartModalOpen(false)}>
+          <div className="modal-content mobile-cart-modal" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', padding: '20px' }}>
+             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
+                <button onClick={() => setIsCartModalOpen(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', cursor: 'pointer', padding: '5px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={20} />
+                </button>
+             </div>
+             {renderCartPanel()}
+          </div>
+        </div>
+      )}
 
       <ModalTicket ticket={lastTicket} onClose={() => setLastTicket(null)} />
     </div>

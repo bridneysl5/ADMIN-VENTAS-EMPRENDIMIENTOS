@@ -235,5 +235,52 @@ input:focus, select:focus {
   .hide-on-mobile {
     display: none !important;
   }
+
+  /* Cart en Mobile */
+  .desktop-cart {
+    display: none !important;
+  }
+  .mobile-cart-fab {
+    display: flex !important;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--primary);
+    color: white;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border: none;
+    z-index: 1000;
+    cursor: pointer;
+  }
+  .cart-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: var(--danger);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-cart-modal {
+    display: flex !important;
+    width: 95%;
+    max-width: 400px;
+  }
+}
+
+/* Ocultar botones mobile en desktop por defecto */
+.mobile-cart-fab, .mobile-cart-modal {
+  display: none !important;
 }
 
