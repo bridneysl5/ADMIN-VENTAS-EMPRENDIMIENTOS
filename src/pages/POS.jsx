@@ -13,7 +13,6 @@ export default function POS() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
-  const [showFiltrosCategorias, setShowFiltrosCategorias] = useState(false);
 
   useEffect(() => {
     setCategoriaSeleccionada("Todas");
@@ -329,34 +328,22 @@ export default function POS() {
               </button>
             </div>
 
-            <button
-              onClick={() => setShowFiltrosCategorias(!showFiltrosCategorias)}
-              style={{
-                background: showFiltrosCategorias ? "var(--primary)" : "rgba(0,0,0,0.5)",
-                border: "1px solid var(--glass-border)",
-                borderRadius: "8px",
-                color: "white",
-                padding: "10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "5px"
-              }}
-              title="Filtrar por Categoría"
+            <select
+              value={categoriaSeleccionada}
+              onChange={e => setCategoriaSeleccionada(e.target.value)}
+              style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", color: "white", outline: "none", maxWidth: "200px" }}
             >
-              <Filter size={18} />
-              {categoriaSeleccionada !== "Todas" && (
-                <span style={{ fontSize: "12px", background: "var(--danger)", padding: "2px 6px", borderRadius: "10px", fontWeight: "bold" }}>1</span>
-              )}
-            </button>
+              {categoriasDisponibles.map(cat => (
+                <option key={cat} value={cat}>{cat === "Todas" ? "Todas (Categorías)" : cat}</option>
+              ))}
+            </select>
 
             <select
               value={filtroEmprendimiento}
               onChange={e => setFiltroEmprendimiento(e.target.value)}
-              style={{ width: "180px", padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", color: "white", outline: "none" }}
+              style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", color: "white", outline: "none", maxWidth: "200px" }}
             >
-              <option value="Todos">Todos (Emprendimientos)</option>
+              <option value="Todos">Todos (Emprend.)</option>
               <option value="Regalos">Regalos</option>
               <option value="Tortas">Tortas</option>
             </select>
@@ -370,42 +357,7 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Categorías Dinámicas (Ocultables) */}
-        {showFiltrosCategorias && (
-          <div style={{ 
-            display: "flex", 
-            gap: "8px", 
-            overflowX: "auto", 
-            flexWrap: "nowrap",
-            paddingBottom: "12px", 
-            marginBottom: "20px",
-            borderBottom: "1px solid var(--glass-border)",
-            scrollbarWidth: "thin",
-            maxWidth: "100%"
-          }}>
-            {categoriasDisponibles.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setCategoriaSeleccionada(cat)}
-                style={{
-                  background: categoriaSeleccionada === cat ? "var(--primary)" : "rgba(255,255,255,0.05)",
-                  color: "white",
-                  border: categoriaSeleccionada === cat ? "none" : "1px solid var(--glass-border)",
-                  padding: "8px 16px",
-                  borderRadius: "20px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  fontSize: "0.85rem",
-                  fontWeight: categoriaSeleccionada === cat ? "bold" : "normal",
-                  transition: "all 0.2s"
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        )}
+
 
         {/* Listado de Productos */}
         <div style={{ flex: 1, overflowY: "auto", paddingRight: "5px" }}>
