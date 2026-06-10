@@ -28,6 +28,11 @@ export default function ModalEditarProducto({ isOpen, onClose, producto }) {
 
   const [selectedInsumo, setSelectedInsumo] = useState("");
   const [cantInsumo, setCantInsumo] = useState("");
+  const [searchInsumoTerm, setSearchInsumoTerm] = useState("");
+
+  const filteredInsumosOptions = insumos
+    .filter(i => i.nombre.toLowerCase().includes(searchInsumoTerm.toLowerCase()))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   useEffect(() => {
     if(isOpen) {
@@ -52,6 +57,8 @@ export default function ModalEditarProducto({ isOpen, onClose, producto }) {
       setOcasionesSeleccionadas(Array.isArray(producto.ocasion) ? producto.ocasion : (producto.ocasion ? producto.ocasion.split(',').map(o => o.trim()) : []));
       setDetallesList(Array.isArray(producto.detalles) && producto.detalles.length > 0 ? producto.detalles : [""]);
       setImagen(null);
+      setSearchInsumoTerm("");
+      setSelectedInsumo("");
     }
   }, [producto, isOpen]);
 
@@ -62,6 +69,8 @@ export default function ModalEditarProducto({ isOpen, onClose, producto }) {
     if(ins && cantInsumo > 0) {
       setReceta([...receta, { idInsumo: ins.id, nombre: ins.nombre, cant: parseFloat(cantInsumo), costoUnitario: ins.costoMenor }]);
       setCantInsumo("");
+      setSearchInsumoTerm("");
+      setSelectedInsumo("");
     }
   };
 
@@ -238,15 +247,28 @@ export default function ModalEditarProducto({ isOpen, onClose, producto }) {
             {producto.imageUrl && !imagen && <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '5px' }}>Imagen actual guardada.</p>}
           </div>
 
-          <div style={{ background: "rgba(0,0,0,0.2)", padding: "20px", borderRadius: "8px" }}>
+           <div style={{ background: "rgba(0,0,0,0.2)", padding: "20px", borderRadius: "8px" }}>
             <h4>Modificar Receta</h4>
-            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-              <select value={selectedInsumo} onChange={e=>setSelectedInsumo(e.target.value)}>
-                <option value="">-- Añadir Insumo --</option>
-                {insumos.map(i => <option key={i.id} value={i.id}>{i.nombre} (en {i.unidadMenor.split(' ')[0]})</option>)}
-              </select>
-              <input type="number" step="0.01" placeholder="Cant" value={cantInsumo} onChange={e=>setCantInsumo(e.target.value)} style={{ width: "100px" }} />
-              <button type="button" onClick={addToReceta} className="btn-primary">+</button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
+              <input 
+                type="text" 
+                placeholder="🔍 Buscar insumo..." 
+                value={searchInsumoTerm} 
+                onChange={e => setSearchInsumoTerm(e.target.value)} 
+                style={{ background: "rgba(255,255,255,0.05)" }}
+              />
+              <div style={{ display: "flex", gap: "10px" }}>
+                <select value={selectedInsumo} onChange={e=>setSelectedInsumo(e.target.value)} style={{ flex: 1 }}>
+                  <option value="">-- Añadir Insumo ({filteredInsumosOptions.length} encontrados) --</option>
+                  {filteredInsumosOptions.map(i => (
+                    <option key={i.id} value={i.id}>
+                      {i.nombre} (en {i.unidadMenor ? i.unidadMenor.split(' ')[0] : 'unidades'})
+                    </option>
+                  ))}
+                </select>
+                <input type="number" step="0.01" placeholder="Cant" value={cantInsumo} onChange={e=>setCantInsumo(e.target.value)} style={{ width: "100px" }} />
+                <button type="button" onClick={addToReceta} className="btn-primary">+</button>
+              </div>
             </div>
             <ul style={{ marginTop: "15px", listStyle: "none", display: "flex", flexDirection: "column", gap: "8px" }}>
               {receta.map((r, idx) => (

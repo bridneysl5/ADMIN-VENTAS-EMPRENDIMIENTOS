@@ -15,6 +15,7 @@ export default function ModalEditarInsumo({ isOpen, onClose, insumo }) {
   const [cantidad, setCantidad] = useState("");
   const [costo, setCosto] = useState("");
   const [cantMenorTotal, setCantMenorTotal] = useState("");
+  const [usado, setUsado] = useState(0);
 
   useEffect(() => {
     if (isOpen && insumo) {
@@ -23,10 +24,33 @@ export default function ModalEditarInsumo({ isOpen, onClose, insumo }) {
       setCantidad(insumo.cantMayor || "");
       setCosto(insumo.costoTotal || "");
       setCantMenorTotal(insumo.cantMenorTotal || "");
+      
+      // Calcular la cantidad consumida hasta ahora en ventas
+      const factor = FACTORES[insumo.unidadMayor || "Metro"].factor;
+      const inicialTotal = (insumo.cantMayor || 0) * factor;
+      const actualTotal = insumo.cantMenorTotal || 0;
+      setUsado(Math.max(0, inicialTotal - actualTotal));
     }
   }, [isOpen, insumo]);
 
   if (!isOpen || !insumo) return null;
+
+  const handleCantidadChange = (val) => {
+    setCantidad(val);
+    const cantMayorNum = parseFloat(val) || 0;
+    const factor = FACTORES[unidad].factor;
+    const inicialTotal = cantMayorNum * factor;
+    // Stock Actual = Inicial - Usado
+    setCantMenorTotal(Math.max(0, inicialTotal - usado));
+  };
+
+  const handleUnidadChange = (val) => {
+    setUnidad(val);
+    const cantMayorNum = parseFloat(cantidad) || 0;
+    const factor = FACTORES[val].factor;
+    const inicialTotal = cantMayorNum * factor;
+    setCantMenorTotal(Math.max(0, inicialTotal - usado));
+  };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -34,9 +58,32 @@ export default function ModalEditarInsumo({ isOpen, onClose, insumo }) {
       const cantMayor = parseFloat(cantidad);
       const costoTotal = parseFloat(costo);
       const factor = FACTORES[unidad].factor;
-      // We allow manually setting the stock
       const cMenorTotal = parseFloat(cantMenorTotal); 
       const costoMenor = costoTotal / (cantMayor * factor);
+
+      // Obtener y actualizar lotes existentes para no perder el tracking
+      const currentLotes = insumo.lotes && Array.isArray(insumo.lotes) 
+        ? [...insumo.lotes] 
+        : [{
+            cantMayor: insumo.cantMayor || 0,
+            costoTotal: insumo.costoTotal || 0,
+            cantMenorTotal: insumo.cantMenorTotal || 0,
+            costoMenor: insumo.costoMenor || 0,
+            fecha: insumo.fecha || new Date().toISOString()
+          }];
+
+      // Modificar el primer lote (lote original) con los nuevos datos
+      if (currentLotes[0]) {
+        currentLotes[0].cantMayor = cantMayor;
+        currentLotes[0].costoTotal = costoTotal;
+        currentLotes[0].costoMenor = costoMenor;
+        
+        // El stock del primer lote es el stock total menos lo que haya en otros lotes
+        const otherLotesStock = currentLotes.slice(1).reduce((sum, l) => sum + l.cantMenorTotal, 0);
+        currentLotes[0].cantMenorTotal = Math.max(0, cMenorTotal - otherLotesStock);
+        currentLotes[0].cantMayor = currentLotes[0].cantMenorTotal / factor;
+        currentLotes[0].costoTotal = currentLotes[0].cantMenorTotal * costoMenor;
+      }
 
       await updateDoc(doc(db, "insumos", insumo.id), {
         nombre,
@@ -46,8 +93,10 @@ export default function ModalEditarInsumo({ isOpen, onClose, insumo }) {
         unidadMenor: FACTORES[unidad].menor,
         factor,
         cantMenorTotal: cMenorTotal,
-        costoMenor
+        costoMenor,
+        lotes: currentLotes
       });
+
       alert("¡Insumo actualizado!");
       onClose();
     } catch (error) {
@@ -69,13 +118,13 @@ export default function ModalEditarInsumo({ isOpen, onClose, insumo }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div>
               <label>Unidad Mayor</label>
-              <select value={unidad} onChange={e=>setUnidad(e.target.value)}>
+              <select value={unidad} onChange={e=>handleUnidadChange(e.target.value)}>
                 {Object.keys(FACTORES).map(k => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
             <div>
               <label>Cantidad Inicial Comprada</label>
-              <input type="number" step="0.01" required value={cantidad} onChange={e=>setCantidad(e.target.value)} />
+              <input type="number" step="0.01" required value={cantidad} onChange={e=>handleCantidadChange(e.target.value)} />
             </div>
           </div>
 
@@ -87,6 +136,10 @@ export default function ModalEditarInsumo({ isOpen, onClose, insumo }) {
           <div>
              <label>Stock Actual (en {FACTORES[unidad]?.menor})</label>
              <input type="number" step="0.01" required value={cantMenorTotal} onChange={e=>setCantMenorTotal(e.target.value)} />
+             <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "4px" }}>
+               Se han consumido <strong>{usado} {FACTORES[unidad]?.menor}</strong> en ventas.
+               El stock se recalcula como <em>Compra Inicial - Consumo</em>, pero puedes corregirlo manualmente si es necesario.
+             </p>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { collection, onSnapshot, addDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import ModalTicket from "../components/ModalTicket";
-import { Trash2, Plus, Minus } from "lucide-react";
+import { Trash2, Plus, Minus, LayoutGrid, List } from "lucide-react";
 
 export default function POS() {
   const [productos, setProductos] = useState([]);
@@ -10,6 +10,28 @@ export default function POS() {
   const [carrito, setCarrito] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroEmprendimiento, setFiltroEmprendimiento] = useState("Todos");
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
+  const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
+
+  useEffect(() => {
+    setCategoriaSeleccionada("Todas");
+  }, [filtroEmprendimiento]);
+
+  // Obtener categorías disponibles de forma reactiva
+  const categoriasDisponibles = ["Todas", ...new Set(productos
+    .filter(p => filtroEmprendimiento === "Todos" || p.emprendimiento === filtroEmprendimiento)
+    .flatMap(p => p.categoria || [])
+  )];
+
+  // Filtrar y ordenar alfabéticamente
+  const filteredProducts = productos
+    .filter(p => p.nombre.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter(p => filtroEmprendimiento === "Todos" || p.emprendimiento === filtroEmprendimiento)
+    .filter(p => {
+      if (categoriaSeleccionada === "Todas") return true;
+      return p.categoria && p.categoria.includes(categoriaSeleccionada);
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   // Pedido info
   const [telefono, setTelefono] = useState("");
@@ -73,29 +95,101 @@ export default function POS() {
   const deliveryMonto = incluyeDelivery ? (parseFloat(costoDelivery) || 0) : 0;
   const total = subtotal + deliveryMonto;
 
+  const getLotes = (insumo) => {
+    if (insumo.lotes && Array.isArray(insumo.lotes)) {
+      return insumo.lotes;
+    }
+    return [{
+      cantMayor: insumo.cantMayor || 0,
+      costoTotal: insumo.costoTotal || 0,
+      cantMenorTotal: insumo.cantMenorTotal || 0,
+      costoMenor: insumo.costoMenor || 0,
+      fecha: insumo.fecha || new Date().toISOString()
+    }];
+  };
+
   const processSale = async () => {
     if(carrito.length === 0) return;
     
-    // Descontar inventario en Firebase
+    // 1. Calcular el costo exacto de ingredientes usando FIFO
+    let costoTotalVentaFIFO = 0;
+    for (let item of carrito) {
+      let costoItemFIFO = 0;
+      for (let r of item.receta) {
+        const insDb = insumos.find(i => i.id === r.idInsumo);
+        if (insDb) {
+          let cantADescontar = r.cant * item.qty;
+          const currentLotes = getLotes(insDb);
+          
+          for (let lote of currentLotes) {
+            if (cantADescontar <= 0) break;
+            const consumedFromLote = Math.min(lote.cantMenorTotal, cantADescontar);
+            costoItemFIFO += consumedFromLote * lote.costoMenor;
+            cantADescontar -= consumedFromLote;
+          }
+          // Si por alguna razón falta stock en los lotes, usar el costoMenor general como fallback
+          if (cantADescontar > 0) {
+            costoItemFIFO += cantADescontar * insDb.costoMenor;
+          }
+        }
+      }
+      // Sumar el costo de insumos del ítem y su mano de obra multiplicados por la cantidad
+      costoTotalVentaFIFO += costoItemFIFO + ((item.costoManoObra || 0) * item.qty);
+    }
+
+    // 2. Descontar inventario en Firebase con lógica FIFO
     for (let item of carrito) {
       for (let r of item.receta) {
         const insDb = insumos.find(i => i.id === r.idInsumo);
         if(insDb) {
-          const newCant = insDb.cantMenorTotal - (r.cant * item.qty);
-          await updateDoc(doc(db, "insumos", insDb.id), { cantMenorTotal: newCant });
+          let cantADescontar = r.cant * item.qty;
+          const currentLotes = getLotes(insDb);
+          const updatedLotes = [];
+          
+          for (let lote of currentLotes) {
+            if (cantADescontar <= 0) {
+              updatedLotes.push(lote);
+            } else if (lote.cantMenorTotal <= cantADescontar) {
+              cantADescontar -= lote.cantMenorTotal;
+            } else {
+              const newCantLote = lote.cantMenorTotal - cantADescontar;
+              const newCantMayorLote = newCantLote / (insDb.factor || 1);
+              updatedLotes.push({
+                ...lote,
+                cantMenorTotal: newCantLote,
+                cantMayor: newCantMayorLote,
+                costoTotal: newCantLote * lote.costoMenor
+              });
+              cantADescontar = 0;
+            }
+          }
+          
+          const totalCantMenor = updatedLotes.reduce((sum, l) => sum + l.cantMenorTotal, 0);
+          const totalCosto = updatedLotes.reduce((sum, l) => sum + (l.cantMenorTotal * l.costoMenor), 0);
+          const nuevoCostoMenor = totalCantMenor > 0 ? (totalCosto / totalCantMenor) : insDb.costoMenor;
+          const totalCantMayor = totalCantMenor / (insDb.factor || 1);
+          
+          await updateDoc(doc(db, "insumos", insDb.id), {
+            lotes: updatedLotes,
+            cantMenorTotal: totalCantMenor,
+            cantMayor: totalCantMayor,
+            costoTotal: totalCosto,
+            costoMenor: nuevoCostoMenor
+          });
         }
       }
     }
 
     const pedidoId = "PED-" + Math.floor(1000 + Math.random() * 9000);
+    const gananciaReal = total - costoTotalVentaFIFO;
 
     // Registrar Venta
     await addDoc(collection(db, "ventas"), {
       tipo: "ingreso", 
       pedidoId,
       total, 
-      costoTotal: costoTotalProductos, 
-      ganancia: total - costoTotalProductos, // Asumimos que el delivery es ingreso neto o neutro, simplificamos.
+      costoTotal: costoTotalVentaFIFO, 
+      ganancia: gananciaReal, 
       items: carrito, 
       fecha: new Date().toISOString(),
       detalles: {
@@ -119,14 +213,54 @@ export default function POS() {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", height: "100%" }}>
-      <div className="glass" style={{ padding: "20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
+      <div className="glass" style={{ padding: "20px", display: "flex", flexDirection: "column", height: "100%" }}>
+        
+        {/* Encabezado y Filtros */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
           <h2 style={{ margin: 0 }}>Catálogo para Vender</h2>
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            {/* Alternador de Vista (Cuadrícula / Lista) */}
+            <div className="glass" style={{ display: "flex", padding: "4px", gap: "4px", borderRadius: "8px", background: "rgba(0,0,0,0.2)" }}>
+              <button 
+                type="button" 
+                onClick={() => setViewMode("grid")}
+                style={{
+                  background: viewMode === "grid" ? "var(--primary)" : "transparent",
+                  border: "none",
+                  borderRadius: "6px",
+                  color: "white",
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+                title="Vista Cuadrícula"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setViewMode("list")}
+                style={{
+                  background: viewMode === "list" ? "var(--primary)" : "transparent",
+                  border: "none",
+                  borderRadius: "6px",
+                  color: "white",
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+                title="Vista Lista Compacta"
+              >
+                <List size={16} />
+              </button>
+            </div>
+
             <select
               value={filtroEmprendimiento}
               onChange={e => setFiltroEmprendimiento(e.target.value)}
-              style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", color: "white", outline: "none" }}
+              style={{ width: "180px", padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", color: "white", outline: "none" }}
             >
               <option value="Todos">Todos (Emprendimientos)</option>
               <option value="Regalos">Regalos</option>
@@ -137,21 +271,155 @@ export default function POS() {
               placeholder="🔍 Buscar producto..." 
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)}
-              style={{ width: "250px", padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.1)", color: "white" }}
+              style={{ width: "220px", padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.1)", color: "white" }}
             />
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "15px" }}>
-          {productos
-            .filter(p => p.nombre.toLowerCase().includes(searchTerm.toLowerCase()))
-            .filter(p => filtroEmprendimiento === "Todos" || p.emprendimiento === filtroEmprendimiento)
-            .map(p => (
-            <div key={p.id} onClick={() => addToCart(p)} style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--glass-border)", padding: "15px", borderRadius: "8px", cursor: "pointer", textAlign: "center" }}>
-              {p.imageUrl && <img src={p.imageUrl} alt={p.nombre} style={{ width: "100%", height: "120px", objectFit: "cover", borderRadius: "8px", marginBottom: "10px" }} />}
-              <h4>{p.nombre}</h4>
-              <p style={{ color: "var(--accent)", fontWeight: "bold", marginTop: "10px", fontSize: "1.2rem" }}>S/ {p.precioVenta.toFixed(2)}</p>
-            </div>
+
+        {/* Categorías Dinámicas */}
+        <div style={{ 
+          display: "flex", 
+          gap: "8px", 
+          overflowX: "auto", 
+          paddingBottom: "12px", 
+          marginBottom: "20px",
+          borderBottom: "1px solid var(--glass-border)",
+          scrollbarWidth: "thin"
+        }}>
+          {categoriasDisponibles.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategoriaSeleccionada(cat)}
+              style={{
+                background: categoriaSeleccionada === cat ? "var(--primary)" : "rgba(255,255,255,0.05)",
+                color: "white",
+                border: categoriaSeleccionada === cat ? "none" : "1px solid var(--glass-border)",
+                padding: "8px 16px",
+                borderRadius: "20px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                fontSize: "0.85rem",
+                fontWeight: categoriaSeleccionada === cat ? "bold" : "normal",
+                transition: "all 0.2s"
+              }}
+            >
+              {cat}
+            </button>
           ))}
+        </div>
+
+        {/* Listado de Productos */}
+        <div style={{ flex: 1, overflowY: "auto", paddingRight: "5px" }}>
+          {filteredProducts.length === 0 ? (
+            <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "40px 0" }}>No se encontraron productos en este filtro.</p>
+          ) : viewMode === "grid" ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "15px" }}>
+              {filteredProducts.map(p => (
+                <div 
+                  key={p.id} 
+                  onClick={() => addToCart(p)} 
+                  style={{ 
+                    background: "rgba(0,0,0,0.2)", 
+                    border: "1px solid var(--glass-border)", 
+                    padding: "15px", 
+                    borderRadius: "12px", 
+                    cursor: "pointer", 
+                    textAlign: "center",
+                    position: "relative",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    height: "100%",
+                    minHeight: "220px",
+                    transition: "transform 0.2s, background-color 0.2s"
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = "translateY(-3px)";
+                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.03)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = "none";
+                    e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.2)";
+                  }}
+                >
+                  <div>
+                    <span style={{ 
+                      position: "absolute", 
+                      top: "8px", 
+                      left: "8px", 
+                      background: p.emprendimiento === "Regalos" ? "#ec4899" : p.emprendimiento === "Tortas" ? "#f59e0b" : "var(--primary)", 
+                      padding: "2px 6px", 
+                      borderRadius: "8px", 
+                      fontSize: "9px", 
+                      fontWeight: "bold",
+                      color: "white",
+                      zIndex: 1
+                    }}>
+                      {p.emprendimiento || "General"}
+                    </span>
+                    
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.nombre} style={{ width: "100%", height: "110px", objectFit: "cover", borderRadius: "8px", marginBottom: "8px" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "110px", background: "rgba(255,255,255,0.05)", borderRadius: "8px", marginBottom: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: "0.8rem" }}>Sin foto</div>
+                    )}
+                    <h4 style={{ fontSize: "0.95rem", margin: "5px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.nombre}>{p.nombre}</h4>
+                  </div>
+                  <p style={{ color: "var(--accent)", fontWeight: "bold", marginTop: "5px", fontSize: "1.1rem" }}>S/ {p.precioVenta.toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {filteredProducts.map(p => (
+                <div 
+                  key={p.id} 
+                  onClick={() => addToCart(p)} 
+                  style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "space-between",
+                    background: "rgba(0,0,0,0.15)", 
+                    border: "1px solid var(--glass-border)", 
+                    padding: "8px 15px", 
+                    borderRadius: "8px", 
+                    cursor: "pointer",
+                    transition: "background-color 0.2s"
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.03)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.15)";
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.nombre} style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "6px" }} />
+                    ) : (
+                      <div style={{ width: "40px", height: "40px", background: "rgba(255,255,255,0.05)", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: "0.7rem" }}>Sin foto</div>
+                    )}
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: "0.95rem" }}>{p.nombre}</h4>
+                      <span style={{ 
+                        fontSize: "0.75rem", 
+                        color: "var(--text-muted)",
+                        display: "inline-flex",
+                        gap: "5px",
+                        marginTop: "2px"
+                      }}>
+                        <span style={{ color: p.emprendimiento === "Regalos" ? "#ec4899" : p.emprendimiento === "Tortas" ? "#f59e0b" : "var(--primary)" }}>
+                          {p.emprendimiento}
+                        </span>
+                        {p.categoria && p.categoria.length > 0 && `• ${p.categoria.join(", ")}`}
+                      </span>
+                    </div>
+                  </div>
+                  <strong style={{ color: "var(--accent)", fontSize: "1.1rem" }}>S/ {p.precioVenta.toFixed(2)}</strong>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
