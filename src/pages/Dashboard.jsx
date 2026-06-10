@@ -189,7 +189,7 @@ export default function Dashboard() {
 
       {/* Alertas de Inventario Crítico */}
       {insumosAlertas.length > 0 && (
-        <div className="glass" style={{ padding: "20px", borderLeft: "4px solid var(--danger)", marginBottom: "30px" }}>
+        <div className="glass hide-on-mobile" style={{ padding: "20px", borderLeft: "4px solid var(--danger)", marginBottom: "30px" }}>
           <h3 style={{ color: "var(--danger)", marginBottom: "15px", display: "flex", alignItems: "center", gap: "10px" }}>
             ⚠️ Alertas de Inventario Crítico ({insumosAlertas.length})
           </h3>
