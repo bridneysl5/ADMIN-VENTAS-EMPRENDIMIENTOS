@@ -40,6 +40,7 @@ export default function POS() {
   const [comentarios, setComentarios] = useState("");
   const [incluyeDelivery, setIncluyeDelivery] = useState(false);
   const [costoDelivery, setCostoDelivery] = useState("");
+  const [adelanto, setAdelanto] = useState("");
   const [lastTicket, setLastTicket] = useState(null);
 
   useEffect(() => {
@@ -183,12 +184,19 @@ export default function POS() {
 
     const pedidoId = "PED-" + Math.floor(1000 + Math.random() * 9000);
     const gananciaReal = total - costoTotalVentaFIFO;
+    
+    const adelantoMonto = parseFloat(adelanto) || 0;
+    const faltante = total - adelantoMonto;
+    const estadoPago = faltante <= 0 ? "Pagado" : "Pendiente";
 
     // Registrar Venta
     await addDoc(collection(db, "ventas"), {
       tipo: "ingreso", 
       pedidoId,
       total, 
+      adelanto: adelantoMonto,
+      faltante: faltante > 0 ? faltante : 0,
+      estadoPago,
       costoTotal: costoTotalVentaFIFO, 
       ganancia: gananciaReal, 
       items: carrito, 
@@ -206,10 +214,12 @@ export default function POS() {
       pedidoId,
       items: carrito,
       total,
+      adelanto: adelantoMonto,
+      faltante: faltante > 0 ? faltante : 0,
       detalles: { telefono, direccion, comentarios, incluyeDelivery, costoDelivery: deliveryMonto }
     });
 
-    setCarrito([]); setTelefono(""); setDireccion(""); setComentarios(""); setIncluyeDelivery(false); setCostoDelivery("");
+    setCarrito([]); setTelefono(""); setDireccion(""); setComentarios(""); setIncluyeDelivery(false); setCostoDelivery(""); setAdelanto("");
     setIsCartModalOpen(false); // Close modal after sale on mobile
   };
 
@@ -257,6 +267,8 @@ export default function POS() {
               {incluyeDelivery && (
                 <input type="number" step="0.1" placeholder="Costo de Delivery (S/)" value={costoDelivery} onChange={e=>setCostoDelivery(e.target.value)} />
               )}
+              
+              <input type="number" step="0.1" placeholder="Adelanto (S/) - Opcional" value={adelanto} onChange={e=>setAdelanto(e.target.value)} />
             </div>
           </div>
         )}
@@ -277,6 +289,18 @@ export default function POS() {
           <span>Total a Cobrar:</span>
           <span>S/ {total.toFixed(2)}</span>
         </div>
+        {(parseFloat(adelanto) || 0) > 0 && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--accent)", fontSize: "1rem", marginBottom: "5px" }}>
+              <span>Adelanto:</span>
+              <span>- S/ {(parseFloat(adelanto) || 0).toFixed(2)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--danger)", fontSize: "1.1rem", fontWeight: "bold", marginBottom: "10px" }}>
+              <span>Faltante a Cancelar:</span>
+              <span>S/ {Math.max(0, total - (parseFloat(adelanto) || 0)).toFixed(2)}</span>
+            </div>
+          </>
+        )}
         <button onClick={processSale} className="btn-primary" style={{ width: "100%", padding: "15px", fontSize: "1.1rem" }}>Cobrar Venta</button>
       </div>
     </>

@@ -107,6 +107,19 @@ export default function ModalTicket({ ticket, onClose }) {
             <span>S/ {ticket.total.toFixed(2)}</span>
           </div>
 
+          {(ticket.adelanto || 0) > 0 && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1rem", marginTop: "5px" }}>
+                <span>Adelanto:</span>
+                <span>- S/ {ticket.adelanto.toFixed(2)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "1.1rem", marginTop: "5px" }}>
+                <span>Faltante a Cancelar:</span>
+                <span>S/ {ticket.faltante.toFixed(2)}</span>
+              </div>
+            </>
+          )}
+
           <div style={{ borderBottom: "1px dashed #ccc", margin: "15px 0" }}></div>
 
           {(ticket.detalles.direccion || ticket.detalles.comentarios) && (

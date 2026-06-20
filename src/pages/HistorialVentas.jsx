@@ -40,6 +40,16 @@ export default function HistorialVentas() {
     await updateDoc(doc(db, "ventas", id), { estado: nuevoEstado });
   };
 
+  const handleMarcarPagado = async (venta) => {
+    if (window.confirm("¿Marcar esta venta como totalmente cancelada?")) {
+      await updateDoc(doc(db, "ventas", venta.id), {
+        adelanto: venta.total,
+        faltante: 0,
+        estadoPago: "Pagado"
+      });
+    }
+  };
+
   const openWhatsApp = (venta) => {
     const tel = venta.detalles?.telefono;
     if (!tel) return alert("Esta venta no tiene número de WhatsApp guardado.");
@@ -68,7 +78,7 @@ export default function HistorialVentas() {
               <th>ID Pedido</th>
               <th>Fecha</th>
               <th>Productos Vendidos</th>
-              <th>Total Cobrado</th>
+              <th>Pagos / Total</th>
               <th>Ganancia Neta</th>
               <th>Estado</th>
               <th>Detalles / Envío</th>
@@ -90,7 +100,26 @@ export default function HistorialVentas() {
                     ))}
                   </ul>
                 </td>
-                <td style={{ fontWeight: "bold" }}>S/ {v.total.toFixed(2)}</td>
+                <td>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <strong style={{ fontSize: "1.1rem" }}>S/ {v.total.toFixed(2)}</strong>
+                    {(v.adelanto > 0 || v.faltante > 0) && (
+                      <div style={{ fontSize: "0.85rem" }}>
+                        <span style={{ color: "var(--accent)" }}>Adelanto: S/ {v.adelanto.toFixed(2)}</span><br/>
+                        {v.faltante > 0 ? (
+                          <span style={{ color: "var(--danger)" }}>Falta: S/ {v.faltante.toFixed(2)}</span>
+                        ) : (
+                          <span style={{ color: "var(--accent)" }}>¡Cancelado! ✔</span>
+                        )}
+                      </div>
+                    )}
+                    {v.faltante > 0 && (
+                      <button onClick={() => handleMarcarPagado(v)} style={{ marginTop: "4px", padding: "4px 8px", fontSize: "0.8rem", background: "var(--primary)", border: "none", color: "white", borderRadius: "4px", cursor: "pointer", width: "max-content" }}>
+                        Marcar Pagado
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td style={{ color: "var(--accent)", fontWeight: "bold" }}>S/ {v.ganancia.toFixed(2)}</td>
                 <td>
                   <div style={{ display: "flex", flexDirection: "column", gap: "5px", fontSize: "0.85rem" }}>
