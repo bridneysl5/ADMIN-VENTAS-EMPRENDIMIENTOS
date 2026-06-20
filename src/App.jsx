@@ -8,6 +8,7 @@ import POS from "./pages/POS";
 import Contabilidad from "./pages/Contabilidad";
 import Marketing from "./pages/Marketing";
 import Distribuidores from "./pages/Distribuidores";
+import Inversiones from "./pages/Inversiones";
 import { Menu } from "lucide-react";
 
 function App() {
@@ -53,6 +54,7 @@ function App() {
               <Route path="/contabilidad" element={<Contabilidad />} />
               <Route path="/marketing" element={<Marketing />} />
               <Route path="/distribuidores" element={<Distribuidores />} />
+              <Route path="/inversiones" element={<Inversiones />} />
             </Routes>
           </div>
         </main>

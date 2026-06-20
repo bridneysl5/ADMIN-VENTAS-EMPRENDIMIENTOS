@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Package, PenTool, ShoppingCart, BarChart3, MessageSquare, Users, X } from "lucide-react";
+import { LayoutDashboard, Package, PenTool, ShoppingCart, BarChart3, MessageSquare, Users, Briefcase, X } from "lucide-react";
 
 export default function Sidebar({ isOpen, onClose }) {
   const navItems = [
@@ -10,6 +10,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: "Contabilidad", path: "/contabilidad", icon: <BarChart3 size={20} /> },
     { name: "Marketing (WhatsApp)", path: "/marketing", icon: <MessageSquare size={20} /> },
     { name: "Distribuidores", path: "/distribuidores", icon: <Users size={20} /> },
+    { name: "Inversiones", path: "/inversiones", icon: <Briefcase size={20} /> },
   ];
 
   return (
