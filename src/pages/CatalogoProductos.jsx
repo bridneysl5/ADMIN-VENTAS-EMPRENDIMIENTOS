@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import ConfirmModal from "../components/ConfirmModal";
 import ModalEditarProducto from "../components/ModalEditarProducto";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Copy } from "lucide-react";
 
 export default function CatalogoProductos() {
   const [productos, setProductos] = useState([]);
@@ -41,6 +41,17 @@ export default function CatalogoProductos() {
   const handleEditClick = (p) => {
     setProdToEdit(p);
     setIsEditOpen(true);
+  };
+
+  const handleDuplicateClick = async (p) => {
+    try {
+      const { id, ...dataToCopy } = p;
+      dataToCopy.nombre = `${dataToCopy.nombre} (Copia)`;
+      await addDoc(collection(db, "productos"), dataToCopy);
+      alert(`Producto duplicado: ${dataToCopy.nombre}. ¡Ya puedes editarlo!`);
+    } catch(err) {
+      alert("Error al duplicar: " + err.message);
+    }
   };
 
   const filteredProductos = productos.filter(p => {
@@ -108,13 +119,20 @@ export default function CatalogoProductos() {
                 <span>Costo Total:</span>
                 <span style={{ color: "var(--danger)" }}>S/ {(p.costoReal || 0).toFixed(2)}</span>
               </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", paddingTop: "5px" }}>
+                <span>Ganancia:</span>
+                <span style={{ color: "var(--accent)" }}>S/ {(p.precioVenta - (p.costoReal || 0)).toFixed(2)}</span>
+              </div>
             </div>
             
             <div style={{ display: "flex", gap: "10px", marginTop: "auto" }}>
-              <button onClick={() => handleEditClick(p)} className="btn-primary" style={{ flex: 1, background: "rgba(255,255,255,0.1)", border: "1px solid var(--glass-border)" }}>
+              <button onClick={() => handleEditClick(p)} className="btn-primary" style={{ flex: 1, background: "rgba(255,255,255,0.1)", border: "1px solid var(--glass-border)", padding: "10px 5px", fontSize: "0.9rem" }}>
                 <Pencil size={16} /> Editar
               </button>
-              <button onClick={() => handleDeleteClick(p)} className="btn-primary" style={{ background: "rgba(239, 68, 68, 0.1)", color: "var(--danger)" }}>
+              <button onClick={() => handleDuplicateClick(p)} className="btn-primary" style={{ flex: 1, background: "rgba(59, 130, 246, 0.1)", border: "1px solid var(--primary)", color: "var(--primary)", padding: "10px 5px", fontSize: "0.9rem" }} title="Duplicar">
+                <Copy size={16} /> Duplicar
+              </button>
+              <button onClick={() => handleDeleteClick(p)} className="btn-primary" style={{ background: "rgba(239, 68, 68, 0.1)", color: "var(--danger)", padding: "10px" }} title="Eliminar">
                 <Trash2 size={16} />
               </button>
             </div>
