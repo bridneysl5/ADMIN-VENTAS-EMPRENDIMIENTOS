@@ -4,18 +4,23 @@ import html2canvas from "html2canvas";
 export default function ModalTicket({ ticket, onClose }) {
   if (!ticket) return null;
 
-  const handlePrint = () => {
-    const printContent = document.getElementById("ticket-print-area").innerHTML;
-    const originalContent = document.body.innerHTML;
-    
-    document.body.innerHTML = `
-      <div style="padding: 20px; font-family: monospace; color: black; background: white; max-width: 400px; margin: 0 auto;">
-        ${printContent}
-      </div>
-    `;
-    window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload(); // Recargar para restaurar los listeners de React
+  const handleDownloadImage = async () => {
+    try {
+      const element = document.getElementById("ticket-print-area");
+      const canvas = await html2canvas(element, { backgroundColor: "#ffffff" });
+      
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ticket-${ticket.pedidoId}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, "image/png");
+    } catch (err) {
+      console.error(err);
+      alert("Error al descargar la imagen del ticket.");
+    }
   };
 
   const handleShareWhatsApp = async () => {
@@ -124,7 +129,7 @@ export default function ModalTicket({ ticket, onClose }) {
 
         <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={onClose} className="btn-secondary" style={{ padding: "10px 20px" }}>Cerrar</button>
-          <button onClick={handlePrint} className="btn-primary" style={{ padding: "10px 20px", background: "#6366f1", border: "none" }}>🖨️ Imprimir / PDF</button>
+          <button onClick={handleDownloadImage} className="btn-primary" style={{ padding: "10px 20px", background: "#6366f1", border: "none" }}>🖼️ Descargar (PNG)</button>
           <button onClick={handleShareWhatsApp} className="btn-primary" style={{ padding: "10px 20px", background: "#25D366", border: "none" }}>📱 Enviar Ticket (WhatsApp)</button>
         </div>
       </div>
