@@ -33,26 +33,22 @@ export default function ModalTicket({ ticket, onClose }) {
       canvas.toBlob(async (blob) => {
         const file = new File([blob], `ticket-${ticket.pedidoId}.png`, { type: "image/png" });
         
-        // Intentar usar Web Share API (soportado en móviles para compartir archivos a WhatsApp)
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Ticket de Pedido',
-            text: `Hola, aquí tienes tu ticket de compra. Pedido: ${ticket.pedidoId}`
-          });
-        } else {
-          // Fallback para PC: Descargar la imagen y abrir WhatsApp Web
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `ticket-${ticket.pedidoId}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-          
-          let itemsText = ticket.items?.map(i => `${i.qty}x ${i.nombre}`).join('%0A') || "";
-          let msg = `*TICKET DE PEDIDO: ${ticket.pedidoId}*%0A¡Hola! Tu ticket se acaba de descargar como imagen. Por favor adjúntala aquí.%0A`;
-          window.open(`https://wa.me/${ticket.detalles.telefono}?text=${msg}`, "_blank");
+        // Descargar la imagen y abrir WhatsApp
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ticket-${ticket.pedidoId}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        // Formatear el teléfono (quitar espacios, + etc)
+        let phone = ticket.detalles.telefono.replace(/[^0-9]/g, '');
+        if (!phone.startsWith("51") && phone.length === 9) {
+          phone = "51" + phone; // Asumir Perú si son 9 dígitos
         }
+
+        let msg = `*TICKET DE PEDIDO: ${ticket.pedidoId}*%0A¡Hola! Tu ticket de compra se acaba de generar. Por favor, adjunta la imagen descargada en este chat para confirmar.%0A`;
+        window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
       }, "image/png");
     } catch (err) {
       console.error(err);
