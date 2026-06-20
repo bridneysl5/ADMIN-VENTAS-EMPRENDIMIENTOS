@@ -20,14 +20,14 @@ export default function POS() {
 
   // Obtener categorías disponibles de forma reactiva
   const categoriasDisponibles = ["Todas", ...new Set(productos
-    .filter(p => filtroEmprendimiento === "Todos" || p.emprendimiento === filtroEmprendimiento)
+    .filter(p => filtroEmprendimiento === "Todos" || (p.emprendimiento || "General") === filtroEmprendimiento)
     .flatMap(p => p.categoria || [])
   )];
 
   // Filtrar y ordenar alfabéticamente
   const filteredProducts = productos
     .filter(p => p.nombre.toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter(p => filtroEmprendimiento === "Todos" || p.emprendimiento === filtroEmprendimiento)
+    .filter(p => filtroEmprendimiento === "Todos" || (p.emprendimiento || "General") === filtroEmprendimiento)
     .filter(p => {
       if (categoriaSeleccionada === "Todas") return true;
       return p.categoria && p.categoria.includes(categoriaSeleccionada);
@@ -344,6 +344,7 @@ export default function POS() {
               style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", color: "white", outline: "none", maxWidth: "200px" }}
             >
               <option value="Todos">Todos (Emprend.)</option>
+              <option value="General">Venta Local</option>
               <option value="Regalos">Regalos</option>
               <option value="Tortas">Tortas</option>
             </select>
